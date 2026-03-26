@@ -1,0 +1,65 @@
+## Bitnami Redis Helm values — Sentinel HA mode
+## Ref: https://github.com/bitnami/charts/tree/main/bitnami/redis
+
+architecture: replication
+
+auth:
+  enabled: true
+  existingSecret: redis-secret
+  existingSecretPasswordKey: redis-password
+
+sentinel:
+  enabled: true
+  quorum: 2
+  downAfterMilliseconds: 5000
+  failoverTimeout: 10000
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 50m
+      memory: 64Mi
+
+master:
+  count: 1
+  persistence:
+    enabled: true
+    storageClass: "local-path"   # k3s default
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+replica:
+  replicaCount: 2
+  persistence:
+    enabled: true
+    storageClass: "local-path"   # k3s default
+    size: 2Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 64Mi
+    limits:
+      cpu: 200m
+      memory: 256Mi
+
+## AOF persistence config passed to Redis
+commonConfiguration: |-
+  appendonly yes
+  appendfsync everysec
+  save 900 1
+  save 300 10
+  save 60 10000
+  maxmemory-policy allkeys-lru
+  maxmemory 100mb
+  tcp-keepalive 60
+  timeout 300
+
+metrics:
+  enabled: false   # skip for demo — saves ~96Mi RAM per pod

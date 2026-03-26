@@ -1,0 +1,67 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: redis-test-job
+  namespace: redis-ha
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: redis-test
+          image: python:3.11-alpine
+          command:
+            - sh
+            - -c
+            - |
+              pip install redis --quiet
+              python /app/test_client.py
+          env:
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: redis-secret
+                  key: redis-password
+          volumeMounts:
+            - name: test-script
+              mountPath: /app
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
+      volumes:
+        - name: test-script
+          configMap:
+            name: redis-test-script
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: redis-test-script
+  namespace: redis-ha
+data:
+  test_client.py: |
+    import time, os, redis
+    from redis.sentinel import Sentinel
+
+    SENTINEL_HOSTS = [
+        ("redis-ha-node-0.redis-ha-headless.redis-ha.svc.cluster.local", 26379),
+        ("redis-ha-node-1.redis-ha-headless.redis-ha.svc.cluster.local", 26379),
+        ("redis-ha-node-2.redis-ha-headless.redis-ha.svc.cluster.local", 26379),
+    ]
+    PASSWORD = os.environ["REDIS_PASSWORD"]
+
+    sentinel = Sentinel(SENTINEL_HOSTS, socket_timeout=2,
+                        password=PASSWORD,
+                        sentinel_kwargs={"password": PASSWORD})
+    m = sentinel.master_for("mymaster", socket_timeout=2)
+    r = sentinel.slave_for("mymaster",  socket_timeout=2)
+
+    m.set("hello", "redis-ha-works")
+    m.incr("counter")
+    print("hello   =", r.get("hello").decode())
+    print("counter =", r.get("counter").decode())
+    print("ALL TESTS PASSED")

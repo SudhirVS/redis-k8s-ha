@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: redis-client
+  namespace: redis-ha
+  labels:
+    app: redis-client
+spec:
+  containers:
+    - name: redis-cli
+      image: redis:7-alpine
+      command: ["sleep", "infinity"]
+      env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: redis-secret
+              key: redis-password
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          cpu: 100m
+          memory: 64Mi
+  restartPolicy: Never
