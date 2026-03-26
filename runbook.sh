@@ -7,7 +7,7 @@ set -euo pipefail
 
 NAMESPACE="redis-ha"
 RELEASE="redis-ha"
-CHART_VERSION="19.6.4"   # pin for reproducibility
+CHART_VERSION="25.3.9"   # pin for reproducibility
 
 # ─── 0. Prerequisites check ──────────────────────────────────────────────────
 check_prerequisites() {
