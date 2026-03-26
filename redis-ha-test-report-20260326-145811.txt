@@ -1,0 +1,109 @@
+Redis HA Test Report
+Generated : Thu Mar 26 14:58:11 UTC 2026
+Cluster   : default
+Namespace : redis-ha
+
+================================================================
+TEST 1 — Pod Health
+================================================================
+NAME              READY   STATUS    RESTARTS   AGE     IP           NODE              NOMINATED NODE   READINESS GATES
+redis-ha-node-0   2/2     Running   0          7m30s   10.42.0.19   ip-172-31-94-73   <none>           <none>
+redis-ha-node-1   2/2     Running   0          7m57s   10.42.0.18   ip-172-31-94-73   <none>           <none>
+redis-ha-node-2   2/2     Running   0          8m26s   10.42.0.17   ip-172-31-94-73   <none>           <none>
+  Running pods : 3 / 3
+  RESULT : ✅ PASS
+
+================================================================
+TEST 2 — Persistent Volume Claims
+================================================================
+NAME                         STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+redis-data-redis-ha-node-0   Bound    pvc-d9617672-b577-479e-99ea-7f2f398d69d7   2Gi        RWO            local-path     <unset>                 21m
+redis-data-redis-ha-node-1   Bound    pvc-3d6330a6-1cc0-45d0-89be-3953c2832dc8   2Gi        RWO            local-path     <unset>                 21m
+redis-data-redis-ha-node-2   Bound    pvc-844a9a7e-777a-4c7e-8616-c4d6ce709df4   2Gi        RWO            local-path     <unset>                 8m26s
+  Bound PVCs : 3 / 3
+  RESULT : ✅ PASS
+
+================================================================
+TEST 3 — Sentinel Master Discovery
+================================================================
+  Master host : redis-ha-node-1.redis-ha-headless.redis-ha.svc.cluster.local
+  Master port : 6379
+  Master pod  : redis-ha-node-1
+  RESULT : ✅ PASS
+
+================================================================
+TEST 4 — Replication Status
+================================================================
+# Replication
+role:master
+connected_slaves:2
+slave0:ip=redis-ha-node-2.redis-ha-headless.redis-ha.svc.cluster.local,port=6379,state=online,offset=351365,lag=0,io-thread=0
+slave1:ip=redis-ha-node-0.redis-ha-headless.redis-ha.svc.cluster.local,port=6379,state=online,offset=351129,lag=0,io-thread=0
+master_failover_state:no-failover
+master_replid:7928182cbb14f09f158cb3c280f14285c81fc925
+master_replid2:f5e17aa3e852b5bb4d56461683514b4c82848eed
+master_repl_offset:351365
+second_repl_offset:191031
+repl_backlog_active:1
+repl_backlog_size:1048576
+repl_backlog_first_byte_offset:185580
+repl_backlog_histlen:165786
+  Connected replicas : 2
+  RESULT : ✅ PASS
+
+================================================================
+TEST 5 — Write to Master
+================================================================
+  SET testkey hello-redis-ha → OK
+  RESULT : ✅ PASS
+
+================================================================
+TEST 6 — Read from Master
+================================================================
+  GET testkey (master) → hello-redis-ha
+  RESULT : ✅ PASS
+
+================================================================
+TEST 7 — Read from Replica (Replication Verify)
+================================================================
+  GET testkey (redis-ha-node-0) → hello-redis-ha
+  RESULT : ✅ PASS
+
+================================================================
+TEST 8 — Failover (Kill Master, Elect New Master)
+================================================================
+  Pre-failover master : redis-ha-node-1
+  Wrote failover-test=before-failover to master
+  Killing master pod: redis-ha-node-1...
+  Waiting for new master election...
+  New master          : redis-ha-node-0
+  Failover time       : 2s
+  RESULT : ✅ PASS
+
+================================================================
+TEST 9 — Data Persistence After Failover
+================================================================
+  GET failover-test (new master: redis-ha-node-0) → before-failover
+  RESULT : ✅ PASS
+
+================================================================
+TEST 10 — Old Master Recovers as Replica
+================================================================
+  Waiting for redis-ha-node-1 to restart (up to 60s)...
+  redis-ha-node-1 role after recovery : role:slave
+NAME              READY   STATUS    RESTARTS   AGE    IP           NODE              NOMINATED NODE   READINESS GATES
+redis-ha-node-0   2/2     Running   0          8m4s   10.42.0.19   ip-172-31-94-73   <none>           <none>
+redis-ha-node-1   2/2     Running   0          24s    10.42.0.20   ip-172-31-94-73   <none>           <none>
+redis-ha-node-2   2/2     Running   0          9m     10.42.0.17   ip-172-31-94-73   <none>           <none>
+  RESULT : ✅ PASS
+
+================================================================
+SUMMARY
+================================================================
+  Total  : 10
+  Passed : 10
+  Failed : 0
+
+  ✅ ALL TESTS PASSED — Redis HA is working correctly
+
+Full report saved to: redis-ha-test-report-20260326-145811.txt
