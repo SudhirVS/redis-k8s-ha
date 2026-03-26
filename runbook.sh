@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # =============================================================================
 # Redis HA on Kubernetes — Full Deployment Runbook
-# Tested with: Minikube 1.32+, kubectl 1.28+, Helm 3.14+
+# Tested with: Ubuntu 22.04, k3s v1.34+, kubectl 1.28+, Helm 3.14+
 # =============================================================================
 set -euo pipefail
 
@@ -12,22 +12,12 @@ CHART_VERSION="25.3.9"   # pin for reproducibility
 # ─── 0. Prerequisites check ──────────────────────────────────────────────────
 check_prerequisites() {
   echo "==> Checking prerequisites..."
-  for tool in kubectl helm minikube; do
+  for tool in kubectl helm; do
     command -v "$tool" &>/dev/null || { echo "ERROR: $tool not found"; exit 1; }
   done
-  echo "    kubectl  : $(kubectl version --client --short 2>/dev/null | head -1)"
-  echo "    helm     : $(helm version --short)"
-}
-
-# ─── 1. Start Minikube (skip if using a real cluster) ────────────────────────
-start_minikube() {
-  echo "==> Starting Minikube (3 nodes for anti-affinity)..."
-  minikube start --nodes=3 --cpus=2 --memory=2048 --driver=docker
-  minikube addons enable metrics-server
-  # Label nodes so anti-affinity spreads pods
-  for i in 1 2; do
-    kubectl label node "minikube-m0$((i+1))" node-role.kubernetes.io/worker=worker --overwrite
-  done
+  echo "    kubectl : $(kubectl version --client --short 2>/dev/null | head -1)"
+  echo "    helm    : $(helm version --short)"
+  echo "    node    : $(kubectl get nodes --no-headers | awk '{print $1, $2}')"  
 }
 
 # ─── 2. Namespace + Secret ───────────────────────────────────────────────────
@@ -150,7 +140,6 @@ teardown() {
 # ─── Main ────────────────────────────────────────────────────────────────────
 case "${1:-deploy}" in
   prereq)    check_prerequisites ;;
-  minikube)  start_minikube ;;
   deploy)
     check_prerequisites
     setup_namespace
@@ -163,7 +152,6 @@ case "${1:-deploy}" in
   teardown)  teardown ;;
   all)
     check_prerequisites
-    start_minikube
     setup_namespace
     deploy_redis
     verify_health

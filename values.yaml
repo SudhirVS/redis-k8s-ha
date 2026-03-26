@@ -36,7 +36,7 @@ master:
       memory: 256Mi
 
 replica:
-  replicaCount: 3
+  replicaCount: 3   # total nodes = 1 master + 2 replicas (chart v25.x counts all nodes here)
   persistence:
     enabled: true
     storageClass: "local-path"   # k3s default
